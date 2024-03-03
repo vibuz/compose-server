@@ -1,0 +1,30 @@
+services:
+  nginx:
+    image: bitnami/nginx:${NGINX_VERSION-latest}
+    restart: always
+    volumes:
+      - ../../etc/server_blocks:/opt/bitnami/nginx/conf/server_blocks:ro
+      - ../../volumes/${SITE_NAME}/wordpress:/app
+    networks:
+      - default
+      - proxy
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.${SITE_NAME}-nginx.rule=Host(`${SITE_DOMAIN?}`) || Host(`www.${SITE_DOMAIN?}`)
+      - traefik.http.routers.${SITE_NAME}-nginx.entrypoints=websecure
+      - traefik.http.routers.${SITE_NAME}-nginx.tls=true
+      - traefik.http.routers.${SITE_NAME}-nginx.tls.certresolver=letsencrypt
+
+  fpm:
+    image: bitnami/php-fpm:${FPM_VERSION-latest}
+    restart: always
+    volumes:
+      - ../../volumes/${SITE_NAME}/wordpress:/app
+    networks:
+      default:
+        aliases:
+          - fpm
+
+networks:
+  proxy:
+    external: true

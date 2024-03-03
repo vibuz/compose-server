@@ -1,0 +1,44 @@
+services:
+  traefik:
+    image: traefik:${TRAEFIK_VERSION-v3.0}
+    restart: always
+    command:
+      - --api.dashboard=true
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --entrypoints.web.address=:80
+      - --entrypoints.web.http.redirections.entryPoint.to=websecure
+      - --entrypoints.web.http.redirections.entryPoint.scheme=https
+      - --entrypoints.web.http.redirections.entrypoint.permanent=true
+      - --entrypoints.websecure.address=:443
+      # - --certificatesResolvers.letsencrypt.acme.caServer=https://acme-staging-v02.api.letsencrypt.org/directory
+      - --certificatesresolvers.letsencrypt.acme.email=${LETSENCRYPT_CERT_EMAIL?}
+      - --certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json
+      - --certificatesresolvers.letsencrypt.acme.dnschallenge=true
+      - --certificatesresolvers.letsencrypt.acme.dnschallenge.resolvers=1.1.1.1:53,8.8.8.8:53
+      - --certificatesresolvers.letsencrypt.acme.dnschallenge.provider=cloudflare
+    environment:
+      - CF_API_EMAIL_FILE=/run/secrets/letsencrypt_cf_api_email
+      - CF_DNS_API_TOKEN_FILE=/run/secrets/letsencrypt_cf_dns_api_token
+    networks:
+      - proxy
+    ports:
+      - 80:80
+      - 443:443
+    volumes:
+      - ../../volumes/traefik/letsencrypt:/letsencrypt
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    secrets:
+      - letsencrypt_cf_api_email
+      - letsencrypt_cf_dns_api_token
+
+secrets:
+  letsencrypt_cf_api_email:
+    environment: LETSENCRYPT_CF_API_EMAIL
+  letsencrypt_cf_dns_api_token:
+    environment: LETSENCRYPT_CF_DNS_API_TOKEN
+
+networks:
+  proxy:
+    name: proxy
+    driver: bridge
